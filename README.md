@@ -6,6 +6,11 @@ Hey there! In this project, I'll be diving into the fascinating world of buildin
 
 I am crafting a JSON database, making it akin to MongoDB in terms of its modernity. Think of it as creating your personalized MongoDB experience tailored to your needs. Additionally, I have taken inspiration from CockroachDB, another Golang-based database. While CockroachDB isn't a JSON database, I am very much intrigued by its approach to handling data integrity issues using mutexes.
 
+- **Collection Management**: Create, read, update, and delete collections of records.
+- **Record Operations**: Write, read, update, and delete individual records within a collection.
+- **Concurrency Handling**: Uses mutexes to ensure safe concurrent access to collections.
+- **Logging**: Provides basic logging functionality to track operations.
+
 ## Why Golang?
 
 Golang, with its efficiency and conciseness, serves as an excellent choice for this endeavor. Its capabilities make it an ideal candidate for crafting robust databases.

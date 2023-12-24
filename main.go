@@ -3,7 +3,124 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"sync"
+
+	"github.com/jcelliott/lumber"
 )
+
+const Version = "1.0.0"
+
+type (
+	Logger interface {
+		Fatal(string, ...interface{})
+		Error(string, ...interface{})
+		Warn(string, ...interface{})
+		Info(string, ...interface{})
+		Debug(string, ...interface{})
+		Trace(string, ...interface{})
+	}
+
+	Driver struct {
+		mutex   sync.Mutex
+		mutexes map[string]*sync.Mutex
+		dir     string
+		log     Logger
+	}
+)
+
+type Options struct {
+	Logger
+}
+
+func New(dir string, options *Options) (*Driver, error) {
+	dir = filepath.Clean(dir)
+
+	opts := Options{}
+
+	if options != nil {
+		opts = *options
+	}
+
+	if opts.Logger == nil {
+		options.Logger = lumber.NewConsoleLogger(lumber.INFO)
+	}
+
+	driver := Driver{
+		dir:     dir,
+		mutexes: make(map[string]*sync.Mutex),
+		log:     opts.Logger,
+	}
+
+	if _, err := os.Stat(dir); err == nil {
+		opts.Logger.Debug("Using '%s' (database already exists)\n", dir)
+		return &driver, nil
+	}
+
+	// careate db
+	opts.Logger.Debug("Creating the database at '%s' ...\n", dir)
+	// 0755 - folder access level
+	return &driver, os.MkdirAll(dir, 0755)
+}
+
+// struct methods
+func (d *Driver) Write(collection string, resource string, v interface{}) error {
+	if collection == "" {
+		return fmt.Errorf("Missing collection. No place to save record!")
+	}
+	if resource == "" {
+		return fmt.Errorf("Missing resource. Unable to save record (no name)!")
+	}
+
+	mutex := d.getOrCreateMutex(collection)
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	dir := filepath.Join(d.dir, collection)
+	finalPath := filepath.Join(dir, resource+".json")
+	tmpPath := finalPath + ".tmp"
+
+	// create collection dir
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	b, err := json.MarshalIndent(v, "", "\t")
+	if err != nil {
+		return err
+	}
+	// write to next line
+	b = append(b, byte('\n'))
+
+	if err := os.WriteFile(tmpPath, b, 0644); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *Driver) Read() error {
+
+}
+
+func (d *Driver) ReadAll() {
+
+}
+
+func (d *Driver) Delete() error {
+
+}
+
+func (d *Driver) getOrCreateMutex() *sync.Mutex {
+
+}
+
+func stat(path string) (fi os.FileInfo, err error) {
+	if fi, err = os.Stat(path); os.IsNotExist(err) {
+		fi, err = os.Stat(path + ".json")
+	}
+	return
+}
 
 type Address struct {
 	City    string
@@ -73,4 +190,14 @@ func main() {
 		}
 		allusers = append(allusers, employeeFound)
 	}
+
+	fmt.Println(allusers)
+
+	// if err != db.Delete("user", "john"); err != nil {
+	// 	fmt.Println("Error", err)
+	// }
+
+	// if err != db.Delete("user", ""); err != nil {
+	// 	fmt.Println("Error", err)
+	// }
 }
